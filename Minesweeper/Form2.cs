@@ -16,7 +16,6 @@ namespace Minesweeper
         public int height;
         public int mines;
 
-        public int minesToSweep;
         public int blocksToClear;
         public Form2(int width, int height, int mines)
         {
@@ -43,6 +42,7 @@ namespace Minesweeper
 
         private async void createBlocks()
         {
+            blocksToClear = width * height - mines;
             Random random = new Random();
             List<int> mineIndexes = new List<int>();
             for (int minesToPlant = mines; minesToPlant != 0; minesToPlant--)
@@ -63,7 +63,7 @@ namespace Minesweeper
                 int y = i / width * 20;
                 dynamicButton.Location = new Point(x, y);
                 dynamicButton.BackColor = Color.Green;
-                dynamicButton.Click += new System.EventHandler(this.Button_Click);
+                dynamicButton.MouseDown += new MouseEventHandler(this.Button_MouseClick);
                 Block block = new Block();
                 block.index = i;
                 block.isMine = mineIndexes.Contains(i);
@@ -73,12 +73,31 @@ namespace Minesweeper
             }
         }
 
-        private void Button_Click(object sender, EventArgs e)
+        private void Button_MouseClick(object sender, MouseEventArgs e)
         {
             Button button = (Button)sender;
             Block block = (Block)button.Tag;
-            int index = block.index;
-            openBlock(index);
+
+            if (e.Button == MouseButtons.Right)
+            {
+                if (block.isTagged)
+                {
+                    button.BackColor = Color.Green;
+                    block.isTagged = false;
+                }
+                else
+                {
+                    button.BackColor = Color.Orange;
+                    block.isTagged = true;
+                }
+                
+            }
+            else
+            {
+                int index = block.index;
+                openBlock(index);
+            }
+            
         }
 
         public void openBlock(int index)
@@ -97,6 +116,12 @@ namespace Minesweeper
                 else
                 {
                     button.BackColor = SystemColors.Control;
+                    blocksToClear--;
+                    if (blocksToClear == 0)
+                    {
+                        MessageBox.Show("successful!");
+                        //game finished...
+                    }
                     checkNeighbors(index);
                 }
             }

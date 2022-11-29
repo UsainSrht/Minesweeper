@@ -11,5 +11,7 @@ namespace Minesweeper
         public int index { get; set; }
         public bool isMine { get; set; }
 
+        public bool isTagged { get; set; }
+
     }
 }
