@@ -12,17 +12,28 @@ namespace Minesweeper
 {
     public partial class Form2 : Form
     {
+        public int buttonWidth = 25;
+        public int buttonHeight = 25;
+
+        public Color colorUnOpened = Color.Green;
+        public Color colorOpened = SystemColors.Control;
+        public Color colorFlagged = Color.Orange;
+        public Color colorMine = Color.Red;
+
         public int width;
         public int height;
         public int mines;
 
         public int blocksToClear;
+
+        public List<int> mineIndexes;
         public Form2(int width, int height, int mines)
         {
             InitializeComponent();
             this.width = width;
             this.height = height;
             this.mines = mines;
+            this.Size = new Size(((width * buttonWidth) + 16), ((height * buttonHeight) + 40));
         }
 
         private void Form2_Load(object sender, EventArgs e)
@@ -44,7 +55,7 @@ namespace Minesweeper
         {
             blocksToClear = width * height - mines;
             Random random = new Random();
-            List<int> mineIndexes = new List<int>();
+            mineIndexes = new List<int>();
             for (int minesToPlant = mines; minesToPlant != 0; minesToPlant--)
             {
                 int mineIndex = random.Next(width * height);
@@ -54,22 +65,23 @@ namespace Minesweeper
                 }
                 mineIndexes.Add(mineIndex);
             }
+
             for (int i = 0; i < width*height; i++)
             {
                 Button dynamicButton = new Button();
                 dynamicButton.Name = "dynamicButton" + i;
-                dynamicButton.Size = new Size(20, 20);
-                int x = i % height * 20;
-                int y = i / width * 20;
+                dynamicButton.Size = new Size(buttonWidth, buttonHeight);
+                int x = ((i % height) * buttonWidth);
+                int y = ((i / width) * buttonHeight);
                 dynamicButton.Location = new Point(x, y);
-                dynamicButton.BackColor = Color.Green;
+                dynamicButton.BackColor = colorUnOpened;
                 dynamicButton.MouseDown += new MouseEventHandler(this.Button_MouseClick);
                 Block block = new Block();
                 block.index = i;
                 block.isMine = mineIndexes.Contains(i);
                 dynamicButton.Tag = block;
                 Controls.Add(dynamicButton);
-                await Task.Delay(1);
+                await Task.Run(() => new System.Threading.ManualResetEvent(false).WaitOne(10));
             }
         }
 
@@ -82,17 +94,17 @@ namespace Minesweeper
             {
                 if (block.isTagged)
                 {
-                    button.BackColor = Color.Green;
+                    button.BackColor = colorUnOpened;
                     block.isTagged = false;
                 }
                 else
                 {
-                    button.BackColor = Color.Orange;
+                    button.BackColor = colorFlagged;
                     block.isTagged = true;
                 }
                 
             }
-            else
+            else if (!block.isTagged)
             {
                 int index = block.index;
                 openBlock(index);
@@ -110,7 +122,8 @@ namespace Minesweeper
                 bool isMine = block.isMine;
                 if (isMine)
                 {
-                    button.BackColor = Color.Red;
+                    button.BackColor = colorMine;
+                    MessageBox.Show("You failed!");
                     //game finished...
                 }
                 else
