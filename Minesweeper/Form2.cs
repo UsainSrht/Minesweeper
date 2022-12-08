@@ -27,6 +27,8 @@ namespace Minesweeper
         public int blocksToClear;
 
         public List<int> mineIndexes;
+
+        public bool appClosing = false;
         public Form2(int width, int height, int mines)
         {
             InitializeComponent();
@@ -48,7 +50,11 @@ namespace Minesweeper
 
         private void Form2_FormClosing(object sender, FormClosingEventArgs e)
         {
-            Application.OpenForms[0].Show();
+            if (e.CloseReason == CloseReason.UserClosing && !appClosing)
+            {
+                Application.OpenForms[0].Show();
+            }
+            
         }
 
         private async void createBlocks()
@@ -66,14 +72,16 @@ namespace Minesweeper
                 mineIndexes.Add(mineIndex);
             }
 
+            int waitms = 1000 / (width * height);
+
             for (int i = 0; i < width*height; i++)
             {
                 Button dynamicButton = new Button();
                 dynamicButton.Name = "dynamicButton" + i;
                 dynamicButton.Size = new Size(buttonWidth, buttonHeight);
-                int x = ((i % height) * buttonWidth);
+                int x = ((i % width) * buttonWidth);
                 int y = ((i / width) * buttonHeight);
-                dynamicButton.Location = new Point(x, y);
+				dynamicButton.Location = new Point(x, y);
                 dynamicButton.BackColor = colorUnOpened;
                 dynamicButton.MouseDown += new MouseEventHandler(this.Button_MouseClick);
                 Block block = new Block();
@@ -81,7 +89,7 @@ namespace Minesweeper
                 block.isMine = mineIndexes.Contains(i);
                 dynamicButton.Tag = block;
                 Controls.Add(dynamicButton);
-                await Task.Run(() => new System.Threading.ManualResetEvent(false).WaitOne(10));
+                await Task.Run(() => new System.Threading.ManualResetEvent(false).WaitOne(waitms));
             }
         }
 
@@ -123,8 +131,18 @@ namespace Minesweeper
                 if (isMine)
                 {
                     button.BackColor = colorMine;
-                    MessageBox.Show("You failed!");
-                    //game finished...
+                    var result = MessageBox.Show("Better luck next time.", "You failed!", MessageBoxButtons.CancelTryContinue, MessageBoxIcon.Question);
+                    if (result == DialogResult.Cancel)
+                    {
+                        revealAllMines();
+					}
+                    else if (result == DialogResult.TryAgain)
+                    {
+						Form newForm = new Form2(width, height, mines);
+						newForm.Show();
+                        appClosing = true;
+                        this.Close();
+					}
                 }
                 else
                 {
@@ -141,12 +159,21 @@ namespace Minesweeper
             
         }
 
+        public void revealAllMines()
+        {
+            mineIndexes.ForEach(index =>
+            {
+				Button button = (Button)Controls.Find("dynamicButton" + index, false)[0];
+                button.BackColor = colorMine;
+			});
+        }
+
         public void checkNeighbors(int index)
         {
             Button button = (Button)Controls.Find("dynamicButton" + index, false)[0];
             Block block = (Block)button.Tag;
-            int x = index % height;
-            int y = index / width;
+            int x = index % width;
+            int y = (index / width);
             List<int> neighbors = new List<int>();
             if (y > 0)
             {
