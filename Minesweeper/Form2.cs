@@ -6,7 +6,9 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows.Forms;
+using System.Xml.Linq;
 
 namespace Minesweeper
 {
@@ -27,9 +29,16 @@ namespace Minesweeper
         public int blocksToClear;
 
         public List<int> mineIndexes;
+        public System.Timers.Timer timer;
 
         public bool appClosing = false;
-        public Form2(int width, int height, int mines)
+        public bool areMinesPlanted = false;
+
+        public string title = "({0}x{1}) {2} mines {3:g}";
+
+        public DateTime timerStartDate;
+
+		public Form2(int width, int height, int mines)
         {
             InitializeComponent();
             this.width = width;
@@ -38,9 +47,10 @@ namespace Minesweeper
             this.Size = new Size(((width * buttonWidth) + 16), ((height * buttonHeight) + 40));
         }
 
+
         private void Form2_Load(object sender, EventArgs e)
         {
-            this.Text = width + "x" + height + " (" + mines + " mines)";
+            this.Text = width + "x" + height + " (" + mines + " mines) 00:00";
         }
 
         private void Form2_Shown(object sender, EventArgs e)
@@ -50,6 +60,7 @@ namespace Minesweeper
 
         private void Form2_FormClosing(object sender, FormClosingEventArgs e)
         {
+            timer.Enabled = false;
             if (e.CloseReason == CloseReason.UserClosing && !appClosing)
             {
                 Application.OpenForms[0].Show();
@@ -57,20 +68,25 @@ namespace Minesweeper
             
         }
 
+        public void startTimer()
+        {
+            timer = new System.Timers.Timer(1);
+            timer.Elapsed += tick;
+			timer.AutoReset = true;
+			timer.Enabled = true;
+            timerStartDate = DateTime.Now;
+        }
+
+        public void tick(Object source, ElapsedEventArgs e)
+        {
+            TimeSpan diff = e.SignalTime.Subtract(timerStartDate);
+            this.Invoke(new MethodInvoker(delegate { Text = String.Format(title, width, height, mines, diff); }));
+		}
+
         private async void createBlocks()
         {
             blocksToClear = width * height - mines;
-            Random random = new Random();
-            mineIndexes = new List<int>();
-            for (int minesToPlant = mines; minesToPlant != 0; minesToPlant--)
-            {
-                int mineIndex = random.Next(width * height);
-                while (mineIndexes.Contains(mineIndex))
-                {
-                    mineIndex = random.Next(width * height);
-                }
-                mineIndexes.Add(mineIndex);
-            }
+            
 
             int waitms = 1000 / (width * height);
 
@@ -86,17 +102,65 @@ namespace Minesweeper
                 dynamicButton.MouseDown += new MouseEventHandler(this.Button_MouseClick);
                 Block block = new Block();
                 block.index = i;
-                block.isMine = mineIndexes.Contains(i);
+                block.isMine = false;
                 dynamicButton.Tag = block;
                 Controls.Add(dynamicButton);
                 await Task.Run(() => new System.Threading.ManualResetEvent(false).WaitOne(waitms));
             }
         }
 
+        public List<int> generateMines()
+        {
+			Random random = new Random();
+			List<int> generatedMines = new List<int>();
+			for (int minesToPlant = mines; minesToPlant != 0; minesToPlant--)
+			{
+				int mineIndex = random.Next(width * height);
+				while (generatedMines.Contains(mineIndex))
+				{
+					mineIndex = random.Next(width * height);
+				}
+				generatedMines.Add(mineIndex);
+			}
+            return generatedMines;
+		}
+
+        public void generateMines(int indexToAvoid)
+        {
+			List<int> clickEnvironment = new List<int>();
+			clickEnvironment.Add(indexToAvoid);
+			clickEnvironment.Add(indexToAvoid + 1); //right
+			clickEnvironment.Add(indexToAvoid - 1); //left
+			clickEnvironment.Add(indexToAvoid - width - 1); //upleft
+			clickEnvironment.Add(indexToAvoid - width); //up
+			clickEnvironment.Add(indexToAvoid - width + 1); //upright
+			clickEnvironment.Add(indexToAvoid + width - 1); //downleft
+			clickEnvironment.Add(indexToAvoid + width); //down
+			clickEnvironment.Add(indexToAvoid + width + 1); //downright
+
+            List<int> generatedMines;
+			generatedMines = generateMines();
+
+			while (generatedMines.Intersect(clickEnvironment).Count() > 0)
+            {
+                generatedMines = generateMines();
+			}
+            mineIndexes = generatedMines;
+            for (int index = 0; index < mineIndexes.Count; index++)
+            {
+                int buttonIndex = mineIndexes[index];
+				Button button = (Button)Controls.Find("dynamicButton" + buttonIndex, false)[0];
+                Block block = (Block) button.Tag;
+                block.isMine = true;
+			}
+            areMinesPlanted = true;
+		}
+
         private void Button_MouseClick(object sender, MouseEventArgs e)
         {
-            Button button = (Button)sender;
-            Block block = (Block)button.Tag;
+
+			Button button = (Button)sender;
+			Block block = (Block)button.Tag;
 
             if (e.Button == MouseButtons.Right)
             {
@@ -114,8 +178,15 @@ namespace Minesweeper
             }
             else if (!block.isTagged)
             {
-                int index = block.index;
-                openBlock(index);
+				
+				int index = block.index;
+				if (!areMinesPlanted)
+				{
+					generateMines(index);
+                    startTimer();
+				}
+
+				openBlock(index);
             }
             
         }
@@ -131,17 +202,20 @@ namespace Minesweeper
                 if (isMine)
                 {
                     button.BackColor = colorMine;
-                    var result = MessageBox.Show("Better luck next time.", "You failed!", MessageBoxButtons.CancelTryContinue, MessageBoxIcon.Question);
+					timer.Enabled = false;
+					var result = MessageBox.Show("Better luck next time.", "You failed!", MessageBoxButtons.CancelTryContinue, MessageBoxIcon.Question);
                     if (result == DialogResult.Cancel)
                     {
                         revealAllMines();
-					}
+                    }
                     else if (result == DialogResult.TryAgain)
                     {
-						Form newForm = new Form2(width, height, mines);
-						newForm.Show();
-                        appClosing = true;
-                        this.Close();
+                        newGame();
+
+					}
+                    else if (result == DialogResult.Continue)
+                    {
+						timer.Enabled = true;
 					}
                 }
                 else
@@ -150,14 +224,26 @@ namespace Minesweeper
                     blocksToClear--;
                     if (blocksToClear == 0)
                     {
-                        MessageBox.Show("successful!");
-                        //game finished...
-                    }
+						timer.Enabled = false;
+						var result = MessageBox.Show("You successfully finished the game.\n\nWould you like to start a new game?", "Congratulations!", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+						if (result == DialogResult.Yes)
+                        {
+							newGame();
+						}
+					}
                     checkNeighbors(index);
                 }
             }
             
         }
+
+        public void newGame()
+        {
+			Form newForm = new Form2(width, height, mines);
+			newForm.Show();
+			appClosing = true;
+			this.Close();
+		}
 
         public void revealAllMines()
         {
@@ -218,7 +304,7 @@ namespace Minesweeper
                 int neighbor = neighbors[i];
                 Button neighborButton = (Button)Controls.Find("dynamicButton" + neighbor, false)[0];
                 Block neighborBlock = (Block)neighborButton.Tag;
-                if (neighborBlock.isMine)
+				if (neighborBlock.isMine)
                 {
                     neighborMineCount++;
                 }
