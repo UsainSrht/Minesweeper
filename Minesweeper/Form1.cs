@@ -41,8 +41,8 @@ namespace Minesweeper
                     mines = 40;
                     break;
                 case 2:
-                    width = 16;
-                    height = 30;
+                    width = 30;
+                    height = 16;
                     mines = 99;
                     break;
                 default:

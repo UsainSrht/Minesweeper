@@ -29,12 +29,11 @@ namespace Minesweeper
         public int blocksToClear;
 
         public List<int> mineIndexes;
-        public System.Timers.Timer timer;
 
         public bool appClosing = false;
         public bool areMinesPlanted = false;
 
-        public string title = "({0}x{1}) {2} mines {3:g}";
+        public string title = "({0}x{1}) {2} mines {3}";
 
         public DateTime timerStartDate;
 
@@ -50,7 +49,7 @@ namespace Minesweeper
 
         private void Form2_Load(object sender, EventArgs e)
         {
-            this.Text = width + "x" + height + " (" + mines + " mines) 00:00";
+            this.Text = String.Format(title, width, height, mines, "00:00");
         }
 
         private void Form2_Shown(object sender, EventArgs e)
@@ -60,7 +59,6 @@ namespace Minesweeper
 
         private void Form2_FormClosing(object sender, FormClosingEventArgs e)
         {
-            timer.Enabled = false;
             if (e.CloseReason == CloseReason.UserClosing && !appClosing)
             {
                 Application.OpenForms[0].Show();
@@ -70,17 +68,15 @@ namespace Minesweeper
 
         public void startTimer()
         {
-            timer = new System.Timers.Timer(1);
-            timer.Elapsed += tick;
-			timer.AutoReset = true;
-			timer.Enabled = true;
+            timer1.Start();
             timerStartDate = DateTime.Now;
         }
 
-        public void tick(Object source, ElapsedEventArgs e)
-        {
-            TimeSpan diff = e.SignalTime.Subtract(timerStartDate);
-            this.Invoke(new MethodInvoker(delegate { Text = String.Format(title, width, height, mines, diff); }));
+		private void timer1_Tick(object sender, EventArgs e)
+		{
+			TimeSpan diff = DateTime.Now.Subtract(timerStartDate);
+            string countdown = diff.ToString("mm':'ss");
+			Text = String.Format(title, width, height, mines, countdown);
 		}
 
         private async void createBlocks()
@@ -202,7 +198,7 @@ namespace Minesweeper
                 if (isMine)
                 {
                     button.BackColor = colorMine;
-					timer.Enabled = false;
+					timer1.Stop();
 					var result = MessageBox.Show("Better luck next time.", "You failed!", MessageBoxButtons.CancelTryContinue, MessageBoxIcon.Question);
                     if (result == DialogResult.Cancel)
                     {
@@ -215,7 +211,7 @@ namespace Minesweeper
 					}
                     else if (result == DialogResult.Continue)
                     {
-						timer.Enabled = true;
+						timer1.Start();
 					}
                 }
                 else
@@ -224,7 +220,7 @@ namespace Minesweeper
                     blocksToClear--;
                     if (blocksToClear == 0)
                     {
-						timer.Enabled = false;
+						timer1.Start();
 						var result = MessageBox.Show("You successfully finished the game.\n\nWould you like to start a new game?", "Congratulations!", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 						if (result == DialogResult.Yes)
                         {
@@ -324,5 +320,5 @@ namespace Minesweeper
             }
             
         }
-    }
+	}
 }

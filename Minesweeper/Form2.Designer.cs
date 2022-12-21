@@ -28,22 +28,31 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.SuspendLayout();
-            // 
-            // Form2
-            // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Name = "Form2";
-            this.Text = "The Game";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form2_FormClosing);
-            this.Load += new System.EventHandler(this.Form2_Load);
-            this.Shown += new System.EventHandler(this.Form2_Shown);
-            this.ResumeLayout(false);
+			this.components = new System.ComponentModel.Container();
+			this.timer1 = new System.Windows.Forms.Timer(this.components);
+			this.SuspendLayout();
+			// 
+			// timer1
+			// 
+			this.timer1.Interval = 1000;
+			this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+			// 
+			// Form2
+			// 
+			this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+			this.ClientSize = new System.Drawing.Size(800, 450);
+			this.Name = "Form2";
+			this.Text = "The Game";
+			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form2_FormClosing);
+			this.Load += new System.EventHandler(this.Form2_Load);
+			this.Shown += new System.EventHandler(this.Form2_Shown);
+			this.ResumeLayout(false);
 
         }
 
-        #endregion
-    }
+		#endregion
+
+		private System.Windows.Forms.Timer timer1;
+	}
 }
